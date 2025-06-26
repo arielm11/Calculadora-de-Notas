@@ -1,0 +1,1 @@
+﻿SELECT COD_MATERIA FROM Materias;
