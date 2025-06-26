@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using System.Runtime.Intrinsics.X86;
 
 internal class Program
 {
@@ -44,15 +45,18 @@ internal class Program
                         ConsultarMaterias();
                         break;
                     case 3:
-                        SaberNotaB2();
+                        CadastrarNotas();
                         break;
                     case 4:
-                        ExameFinal();
+                        SaberNotaB2();
                         break;
                     case 5:
-                        Media();
+                        ExameFinal();
                         break;
                     case 6:
+                        Media();
+                        break;
+                    case 7:
                         Console.WriteLine("Saindo do Programa");
                         return;
                 }
@@ -74,10 +78,11 @@ internal class Program
             Console.WriteLine(new string('-', 60));
             Console.WriteLine("1 - Cadastrar Matéria");
             Console.WriteLine("2 - Consultar Matérias Cadastradas");
-            Console.WriteLine("3 - Saber quanto precisa tirar no 2° Bimestre");
-            Console.WriteLine("4 - Saber quanto precisa tirar no Exame Final");
-            Console.WriteLine("5 - Ver se foi aprovado");
-            Console.WriteLine("6 - Sair");
+            Console.WriteLine("3 - Cadastrar Notas");
+            Console.WriteLine("4 - Saber quanto precisa tirar no 2° Bimestre");
+            Console.WriteLine("5 - Saber quanto precisa tirar no Exame Final");
+            Console.WriteLine("6 - Ver se foi aprovado");
+            Console.WriteLine("7 - Sair");
             Console.WriteLine(new string('-', 60));
         }
 
@@ -145,6 +150,37 @@ internal class Program
             }
         }
 
+        // Função para Listar as matérias cadastradas
+        static List<int> ListarMateriasIds()
+        {
+            var ids = new List<int>();
+            string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+
+                string query = "SELECT COD_MATERIA FROM Materias";
+                using (SqlCommand cmd = new SqlCommand(query, connection))
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        try
+                        {
+                            int codMateria = reader.GetInt32(0);
+                            ids.Add(codMateria);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(RED + "Erro ao ler os dados da matéria: " + ex.Message + RESET);
+                        }
+                    }
+                }
+            }
+
+            return ids;
+        }
+
         // Função para consultar as matérias cadastradas
         static void ConsultarMaterias()
         {
@@ -202,27 +238,108 @@ internal class Program
         {
             Console.WriteLine("\n" + BLUE + "Cadastrar Notas".PadLeft(30 + "Cadastrar Notas".Length / 2).PadRight(60) + RESET);
 
-            string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                connection.Open();
+            ConsultarMaterias();
 
-                string query = "SELECT COD_MATERIA FROM Materias";
-                using (SqlCommand cmd = new SqlCommand(query, connection))
-                using (SqlDataReader reader = cmd.ExecuteReader())
+            List<int> materiasIds = ListarMateriasIds();
+
+            if (materiasIds.Count == 0)
+            {
+                Console.WriteLine(RED + "Nenhuma matéria cadastrada. Por favor, cadastre uma matéria primeiro." + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite o código da matéria: " + RESET);
+            string? input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int codMateria) || !materiasIds.Contains(codMateria))
+            {
+                Console.WriteLine(RED + "Código inválido. Por favor, insira um código de matéria válido.\n" + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite a nota do 1° Bimestre: " + RESET);
+            string? nota1 = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(nota1) || !float.TryParse(nota1, out float notaB1) || notaB1 < 0 || notaB1 > 100)
+            {
+                Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite a nota do 2° Bimestre: " + RESET);
+            string? nota2 = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(nota2) || !float.TryParse(nota2, out float notaB2) || notaB2 < 0 || notaB2 > 100)
+            {
+                Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                return;
+            }
+
+
+            float media = (notaB1 * 2 + notaB2 * 3) / 5;
+
+            if (media < 70)
+            {
+                Console.WriteLine(YELLOW + "Digite a nota do Exame Final: " + RESET);
+                string? nota3 = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(nota3) || !float.TryParse(nota3, out float notaExame) || notaExame < 0 || notaExame > 100)
                 {
-                    
+                    Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                    return;
                 }
 
-            }
+                float mediaFinal = (media * 3 + notaExame * 2) / 5;
 
-            try
-            {
 
+                try
+                {
+                    string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+
+                        string query = "INSERT INTO Notas (COD_MATERIA, PRIMEIRA_NOTA, SEGUNDA_NOTA, EXAME_FINAL, NOTA_FINAL) VALUES (@CodMateria,@PrimeiraNota,@SegundaNota,@ExameFinal,@NotaFinal)";
+                        using (SqlCommand cmd = new SqlCommand(query, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@CodMateria", codMateria);
+                            cmd.Parameters.AddWithValue("@PrimeiraNota", notaB1);
+                            cmd.Parameters.AddWithValue("@SegundaNota", notaB2);
+                            cmd.Parameters.AddWithValue("@ExameFinal", notaExame);
+                            cmd.Parameters.AddWithValue("@NotaFinal", mediaFinal);
+
+                            int linhasAfetadas = cmd.ExecuteNonQuery();
+                            Console.WriteLine(GREEN + $"Notas Cadastradas!" + RESET);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(RED + "Erro ao cadastrar as notas: " + ex.Message + "\n" + RESET);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine(RED + "Erro ao cadastrar as notas: " + ex.Message + "\n" + RESET);
+                try
+                {
+                    string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+
+                        string query = "INSERT INTO Notas (COD_MATERIA, PRIMEIRA_NOTA, SEGUNDA_NOTA, NOTA_FINAL) VALUES (@CodMateria,@PrimeiraNota,@SegundaNota,@NotaFinal)";
+                        using (SqlCommand cmd = new SqlCommand(query, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@CodMateria", codMateria);
+                            cmd.Parameters.AddWithValue("@PrimeiraNota", notaB1);
+                            cmd.Parameters.AddWithValue("@SegundaNota", notaB2);
+                            cmd.Parameters.AddWithValue("@NotaFinal", media);
+
+                            int linhasAfetadas = cmd.ExecuteNonQuery();
+                            Console.WriteLine(GREEN + $"Notas Cadastradas!" + RESET);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(RED + "Erro ao cadastrar as notas: " + ex.Message + "\n" + RESET);
+                }
             }
         }
 
