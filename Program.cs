@@ -1,5 +1,4 @@
 ﻿using Microsoft.Data.SqlClient;
-using System.Runtime.Intrinsics.X86;
 
 internal class Program
 {
@@ -31,9 +30,9 @@ internal class Program
                 Console.Write("\n" + YELLOW + "Digite o número da operação: " + RESET);
                 string? input = Console.ReadLine();
 
-                if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int operacao) || operacao < 1 || operacao > 5)
+                if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int operacao) || operacao < 1 || operacao > 11)
                 {
-                    Console.WriteLine(YELLOW + "Entrada inválida. Por favor, insira um número entre 1 e 4.\n" + RESET);
+                    Console.WriteLine(YELLOW + "Entrada inválida. Por favor, insira um número entre 1 e 10.\n" + RESET);
                     continue;
                 }
                 switch (operacao)
@@ -45,18 +44,27 @@ internal class Program
                         ConsultarMaterias();
                         break;
                     case 3:
-                        CadastrarNotas();
+                        EditarMateria();
                         break;
                     case 4:
-                        SaberNotaB2();
+                        DeletarMateria();
                         break;
                     case 5:
-                        ExameFinal();
+                        CadastrarNotas();
                         break;
                     case 6:
-                        Media();
+                        ConsultarNotas();
                         break;
                     case 7:
+                        SaberNotaB2();
+                        break;
+                    case 8:
+                        ExameFinal();
+                        break;
+                    case 9:
+                        Media();
+                        break;
+                    case 10:
                         Console.WriteLine("Saindo do Programa");
                         return;
                 }
@@ -78,11 +86,15 @@ internal class Program
             Console.WriteLine(new string('-', 60));
             Console.WriteLine("1 - Cadastrar Matéria");
             Console.WriteLine("2 - Consultar Matérias Cadastradas");
-            Console.WriteLine("3 - Cadastrar Notas");
-            Console.WriteLine("4 - Saber quanto precisa tirar no 2° Bimestre");
-            Console.WriteLine("5 - Saber quanto precisa tirar no Exame Final");
-            Console.WriteLine("6 - Ver se foi aprovado");
-            Console.WriteLine("7 - Sair");
+            Console.WriteLine("3 - Editar Matéria");
+            Console.WriteLine("4 - Deletar Matéria");
+            Console.WriteLine("5 - Cadastrar Notas");
+            Console.WriteLine("6 - Consultar Notas");
+            Console.WriteLine("7 - Editar Notas");
+            Console.WriteLine("8 - Saber quanto precisa tirar no 2° Bimestre");
+            Console.WriteLine("9 - Saber quanto precisa tirar no Exame Final");
+            Console.WriteLine("10 - Ver se foi aprovado");
+            Console.WriteLine("11 - Sair");
             Console.WriteLine(new string('-', 60));
         }
 
@@ -147,6 +159,115 @@ internal class Program
                     int linhasAfetadas = cmd.ExecuteNonQuery();
                     Console.WriteLine(GREEN + $"Matéria '{nomeMateria}' cadastrada com sucesso! Linhas afetadas: {linhasAfetadas}" + RESET);
                 }
+            }
+        }
+
+        // Função para editar matérias cadastradas
+        static void EditarMateria()
+        {
+            Console.WriteLine("\n" + BLUE + "Editar Matéria".PadLeft(30 + "Editar Matéria".Length / 2).PadRight(60) + RESET);
+            ConsultarMaterias();
+            List<int> materiasIds = ListarMateriasIds();
+            if (materiasIds.Count == 0)
+            {
+                Console.WriteLine(RED + "Nenhuma matéria cadastrada. Por favor, cadastre uma matéria primeiro." + RESET);
+                return;
+            }
+            Console.WriteLine(YELLOW + "Digite o código da matéria que deseja editar: " + RESET);
+            string? input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int codMateria) || !materiasIds.Contains(codMateria))
+            {
+                Console.WriteLine(RED + "Código inválido. Por favor, insira um código de matéria válido.\n" + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite o novo nome da matéria: " + RESET);
+            string? novoNomeMateria = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(novoNomeMateria))
+            {
+                Console.WriteLine(RED + "Nome da matéria não pode ser vazio ou nulo." + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite o novo nome do Professor: " + RESET);
+            string? novoNomeProfessor = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(novoNomeProfessor))
+            {
+                Console.WriteLine(RED + "Nome do professor não pode ser vazio ou nulo." + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite o novo período da matéria: " + RESET);
+            string? novoPeriodoMateria = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(novoPeriodoMateria))
+            {
+                Console.WriteLine(RED + "Período da matéria não pode ser vazio ou nulo." + RESET);
+                return;
+            }
+
+            try
+            {
+                string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+
+                    string query = "UPDATE Materias SET NOM_MATERIA= @NovoNomeMateria, NOM_PROFESSOR = @NovoNomeProfessor, PERIODO = @NovoPeriodo WHERE COD_MATERIA = @CodMateria ";
+                    using (SqlCommand cmd = new SqlCommand(query, connection))
+                    {
+
+                        cmd.Parameters.AddWithValue("@NovoNomeMateria", novoNomeMateria);
+                        cmd.Parameters.AddWithValue("@NovoNomeProfessor", novoNomeProfessor);
+                        cmd.Parameters.AddWithValue("@NovoPeriodo", novoPeriodoMateria);
+                        cmd.Parameters.AddWithValue("@Codmateria", codMateria);
+
+                        int linhasAfetadas = cmd.ExecuteNonQuery();
+                        Console.WriteLine(GREEN + $"Matéria atualizada!" + RESET);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(RED + "Erro ao editar a matéria: " + ex.Message + "\n" + RESET);
+            }
+        }
+
+        //Função para deletar uma matéria já cadastrada
+        static void DeletarMateria()
+        {
+            Console.WriteLine("\n" + BLUE + "Deletar Matéria".PadLeft(30 + "Deletar Matéria".Length / 2).PadRight(60) + RESET);
+            ConsultarMaterias();
+            List<int> materiasIds = ListarMateriasIds();
+            if (materiasIds.Count == 0)
+            {
+                Console.WriteLine(RED + "Nenhuma matéria cadastrada. Por favor, cadastre uma matéria primeiro." + RESET);
+                return;
+            }
+            Console.WriteLine(YELLOW + "Digite o código da matéria que deseja deletar: " + RESET);
+            string? input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int codMateria) || !materiasIds.Contains(codMateria))
+            {
+                Console.WriteLine(RED + "Código inválido. Por favor, insira um código de matéria válido.\n" + RESET);
+                return;
+            }
+            try
+            {
+                string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    connection.Open();
+                    string query = "DELETE FROM Materias WHERE COD_MATERIA = @CodMateria";
+                    using (SqlCommand cmd = new SqlCommand(query, connection))
+                    {
+                        cmd.Parameters.AddWithValue("@CodMateria", codMateria);
+                        int linhasAfetadas = cmd.ExecuteNonQuery();
+                        Console.WriteLine(GREEN + $"Matéria deletada!" + RESET);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(RED + "Erro ao deletar a matéria: " + ex.Message + "\n" + RESET);
             }
         }
 
@@ -231,9 +352,9 @@ internal class Program
                     }
                 }
             }
-
         }
 
+        // Função para Cadastrar Notas em Matérias já cadastradas
         static void CadastrarNotas()
         {
             Console.WriteLine("\n" + BLUE + "Cadastrar Notas".PadLeft(30 + "Cadastrar Notas".Length / 2).PadRight(60) + RESET);
@@ -339,6 +460,57 @@ internal class Program
                 catch (Exception ex)
                 {
                     Console.WriteLine(RED + "Erro ao cadastrar as notas: " + ex.Message + "\n" + RESET);
+                }
+            }
+        }
+
+        //Função para consultar as notas cadastradas
+        static void ConsultarNotas()
+        {
+            Console.WriteLine("\n" + BLUE + "Consultar Notas".PadLeft(30 + "Consultar Notas".Length / 2).PadRight(60) + RESET);
+            string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                connection.Open();
+                string query = "SELECT N.COD_MATERIA, M.NOM_MATERIA, N.PRIMEIRA_NOTA, N.SEGUNDA_NOTA, N.EXAME_FINAL, N.NOTA_FINAL FROM Notas N JOIN Materias M ON N.COD_MATERIA = M.COD_MATERIA";
+                using (SqlCommand cmd = new SqlCommand(query, connection))
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    bool headerPrinted = false;
+                    while (reader.Read())
+                    {
+                        try
+                        {
+                            if (!headerPrinted)
+                            {
+                                Console.WriteLine("+---------+----------------------+----------------------+----------------------+----------------------+----------------------+");
+                                Console.WriteLine("| Código  | Matéria              | 1° Bimestre          | 2° Bimestre          | Exame Final          | Nota Final           |");
+                                Console.WriteLine("+---------+----------------------+----------------------+----------------------+----------------------+----------------------+");
+                                headerPrinted = true;
+                            }
+                            
+                            int codMateria = reader.GetInt32(0);
+                            string nomeMateria = reader.GetValue(1).ToString() ?? "";
+                            float notaB1 = (float)reader.GetDecimal(2);
+                            float notaB2 = (float)reader.GetDecimal(3);
+                            float exameFinal = reader.IsDBNull(4) ? 0 : (float)reader.GetDecimal(4);
+                            float notaFinal = (float)reader.GetDecimal(5);
+                            
+                            Console.WriteLine($"| {codMateria,-7} | {nomeMateria,-20} | {notaB1,-20} | {notaB2,-20} | {exameFinal,-20} | {notaFinal,-20} |");
+                            if (headerPrinted)
+                            {
+                                Console.WriteLine("+---------+----------------------+----------------------+----------------------+");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Nenhuma matéria cadastrada.\n");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(RED + "Erro ao ler os dados das notas: " + ex.Message + RESET);
+                        }
+                    }
                 }
             }
         }
