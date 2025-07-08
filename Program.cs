@@ -56,15 +56,18 @@ internal class Program
                         ConsultarNotas();
                         break;
                     case 7:
-                        SaberNotaB2();
+                        EditarNotas();
                         break;
                     case 8:
-                        ExameFinal();
+                        SaberNotaB2();
                         break;
                     case 9:
-                        Media();
+                        ExameFinal();
                         break;
                     case 10:
+                        Media();
+                        break;
+                    case 11:
                         Console.WriteLine("Saindo do Programa");
                         return;
                 }
@@ -488,18 +491,18 @@ internal class Program
                                 Console.WriteLine("+---------+----------------------+----------------------+----------------------+----------------------+----------------------+");
                                 headerPrinted = true;
                             }
-                            
+
                             int codMateria = reader.GetInt32(0);
                             string nomeMateria = reader.GetValue(1).ToString() ?? "";
                             float notaB1 = (float)reader.GetDecimal(2);
                             float notaB2 = (float)reader.GetDecimal(3);
                             float exameFinal = reader.IsDBNull(4) ? 0 : (float)reader.GetDecimal(4);
                             float notaFinal = (float)reader.GetDecimal(5);
-                            
+
                             Console.WriteLine($"| {codMateria,-7} | {nomeMateria,-20} | {notaB1,-20} | {notaB2,-20} | {exameFinal,-20} | {notaFinal,-20} |");
                             if (headerPrinted)
                             {
-                                Console.WriteLine("+---------+----------------------+----------------------+----------------------+");
+                                Console.WriteLine("+---------+----------------------+----------------------+----------------------+----------------------+----------------------+");
                             }
                             else
                             {
@@ -513,6 +516,115 @@ internal class Program
                     }
                 }
             }
+        }
+
+        //Função para editar notas já cadastradas
+        static void EditarNotas()
+        {
+            Console.WriteLine("\n" + BLUE + "Editar Notas".PadLeft(30 + "Editar Notas".Length / 2).PadRight(60) + RESET);
+
+            ConsultarNotas();
+
+            List<int> materiasIds = ListarMateriasIds();
+
+            if (materiasIds.Count == 0)
+            {
+                Console.WriteLine(RED + "Nenhuma matéria cadastrada. Por favor, cadastre uma matéria primeiro." + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite o código da matéria que deseja editar as notas: " + RESET);
+            string? input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input) || !int.TryParse(input, out int codMateria) || !materiasIds.Contains(codMateria))
+            {
+                Console.WriteLine(RED + "Código inválido. Por favor, insira um código de matéria válido.\n" + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite a nova nota do 1° Bimestre: " + RESET);
+            string? nota1 = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(nota1) || !float.TryParse(nota1, out float notaB1) || notaB1 < 0 || notaB1 > 100)
+            {
+                Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                return;
+            }
+
+            Console.WriteLine(YELLOW + "Digite a nova nota do 2° Bimestre: " + RESET);
+            string? nota2 = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(nota2) || !float.TryParse(nota2, out float notaB2) || notaB2 < 0 || notaB2 > 100)
+            {
+                Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                return;
+            }
+
+            float media = (notaB1 * 2 + notaB2 * 3) / 5;
+
+            if (media < 70)
+            {
+                Console.WriteLine(YELLOW + "Digite a nova nota do Exame Final: " + RESET);
+                string? nota3 = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(nota3) || !float.TryParse(nota3, out float notaExame) || notaExame < 0 || notaExame > 100)
+                {
+                    Console.WriteLine(RED + "Nota inválida! A nota deve estar entre 0 e 100.\n" + RESET);
+                    return;
+                }
+
+                float mediaFinal = (media * 3 + notaExame * 2) / 5;
+
+                try
+                {
+                    string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+
+                        string query = "UPDATE Notas SET PRIMEIRA_NOTA= @PrimeiraNota, SEGUNDA_NOTA = @SegundaNota, EXAME_FINAL = @ExameFinal, NOTA_FINAL = @NotaFinal WHERE COD_MATERIA = @CodMateria";
+                        using (SqlCommand cmd = new SqlCommand(query, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@CodMateria", codMateria);
+                            cmd.Parameters.AddWithValue("@PrimeiraNota", notaB1);
+                            cmd.Parameters.AddWithValue("@SegundaNota", notaB2);
+                            cmd.Parameters.AddWithValue("@ExameFinal", notaExame);
+                            cmd.Parameters.AddWithValue("@NotaFinal", mediaFinal);
+
+                            int linhasAfetadas = cmd.ExecuteNonQuery();
+                            Console.WriteLine(GREEN + $"Notas atualizadas!" + RESET);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(RED + "Erro ao atualizar as notas: " + ex.Message + "\n" + RESET);
+                }
+            }
+            else
+            {
+                try
+                {
+                    string connectionString = "Server=.\\SQLEXPRESS;Database=MeuBancoTeste;Trusted_Connection=True;TrustServerCertificate=True";
+                    using (SqlConnection connection = new SqlConnection(connectionString))
+                    {
+                        connection.Open();
+
+                        string query = "UPDATE Notas SET PRIMEIRA_NOTA= @PrimeiraNota, SEGUNDA_NOTA = @SegundaNota, EXAME_FINAL = null, NOTA_FINAL = @NotaFinal WHERE COD_MATERIA = @CodMateria";
+                        using (SqlCommand cmd = new SqlCommand(query, connection))
+                        {
+                            cmd.Parameters.AddWithValue("@CodMateria", codMateria);
+                            cmd.Parameters.AddWithValue("@PrimeiraNota", notaB1);
+                            cmd.Parameters.AddWithValue("@SegundaNota", notaB2);
+                            cmd.Parameters.AddWithValue("@NotaFinal", media);
+
+                            int linhasAfetadas = cmd.ExecuteNonQuery();
+                            Console.WriteLine(GREEN + $"Notas atualizadas!" + RESET);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(RED + "Erro ao atualizar as notas: " + ex.Message + "\n" + RESET);
+                }
+            }
+
         }
 
         //Função para saber a nota do 2° Bimestre
