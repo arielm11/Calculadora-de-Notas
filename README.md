@@ -79,12 +79,6 @@ Média Final = (Média Bimestral * 3 + Exame Final * 2) / 5
 
 ---
 
-## 📸 Demonstração
-
-![screenshot](https://via.placeholder.com/800x200.png?text=Insira+uma+print+do+terminal+com+o+menu+rodando+bonito)
-
----
-
 ## 📁 Scripts SQL
 
 Você pode criar os scripts a partir do seu banco. Aqui vai um exemplo para começar:
